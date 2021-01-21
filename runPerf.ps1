@@ -1,14 +1,15 @@
 ﻿param ($h, $s, $c, $p, $n, $conf)
 
-$calOut = "calibrate.out"
-$proOut = "process.out"
+$scriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
+
+$calOut = "$scriptRoot/calibrate.out"
+$proOut = "$scriptRoot/process.out"
 
 if($conf -ne $null){
-    $calOut = "calibrate-$conf.out"
-    $proOut = "process-$conf.out"
+    $calOut = "$scriptRoot/calibrate-$conf.out"
+    $proOut = "$scriptRoot/process-$conf.out"
 }
 
-$scriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 $ab="$ScriptRoot/ab"
 $allowedOverheadMs=200
 
@@ -39,7 +40,7 @@ Write-Host "Process Endpoint         = $p"
 
 Write-Host "Starting the service"
 
-$serviceProcess = Start-Process powershell -argument "$s"  -RedirectStandardError "service-$conf.error.out" -RedirectStandardOutput "service-$conf.out" –PassThru -NoNewWindow
+$serviceProcess = Start-Process powershell -argument "$s" -RedirectStandardError "$scriptRoot/service-$conf.error.out" -RedirectStandardOutput "$scriptRoot/service-$conf.out" –PassThru -NoNewWindow
 
 # Function to get status code from service endpoint
 Function Get-StatusCode {
