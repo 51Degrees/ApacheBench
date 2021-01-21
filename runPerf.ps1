@@ -63,10 +63,6 @@ Invoke-Expression "$ab -A uas.csv -q -n $n $h/$c >$calOut"
 Write-Host "Running processing"
 Invoke-Expression "$ab -A uas.csv -q -n $n $h/$p >$proOut"
 
-# Stop the service
-$serviceProcess = get-process | where-object {$_.MainWindowTitle -eq "Listening Web Service"}
-stop-process $serviceProcess.Id
-
 # Check no requests failed in calibration
 $failedCal = Get-Content $calOut | Select-String -Pattern "Failed requests"
 $failedCal = $failedCal -replace '\D+(\d+)','$1'
@@ -116,3 +112,7 @@ Write-Host "Processing overhead is $overheadMs ms per request"
 if ($overheadMs -gt $allowedOverheadMs) {
     Write-Warning "Overhead was over $allowedOverheadMs"
 }
+
+# Stop the service
+$serviceProcess = get-process | where-object {$_.MainWindowTitle -eq "Listening Web Service"}
+stop-process $serviceProcess.Id
