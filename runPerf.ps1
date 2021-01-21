@@ -1,8 +1,13 @@
-﻿param ($h, $s, $c, $p, $n)
-
+﻿param ($h, $s, $c, $p, $n, $conf)
 
 $calOut = "calibrate.out"
 $proOut = "process.out"
+
+if($conf -ne $null){
+    $calOut = "calibrate-$conf.out"
+    $proOut = "process-$conf.out"
+}
+
 $scriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 $ab="$ScriptRoot/ab"
 $allowedOverheadMs=200
@@ -34,7 +39,7 @@ Write-Host "Process Endpoint         = $p"
 
 Write-Host "Starting the service"
 
-Invoke-Expression "cmd /c start powershell -Command { `$host.UI.RawUI.WindowTitle = `"Listening Web Service`"; $s 2> $scriptRoot\service.error.out 1> $scriptRoot\service.out; }"
+Invoke-Expression "cmd /c start powershell -Command { `$host.UI.RawUI.WindowTitle = `"Listening Web Service`"; $s 2> $scriptRoot\service-$conf.error.out 1> $scriptRoot\service-$conf.out; }"
 
 # Function to get status code from service endpoint
 Function Get-StatusCode {
