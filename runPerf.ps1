@@ -65,9 +65,9 @@ While ($HTTP_Status -ne 200 -And $Tries -le 12) {
 
 # Run the benchmarks
 Write-Host "Running calibration"
-Invoke-Expression "$ab -A uas.csv -q -n $n $h/$c >$calOut"
+Invoke-Expression "$ab -U uas.csv -q -n $n $h/$c >$calOut"
 Write-Host "Running processing"
-Invoke-Expression "$ab -A uas.csv -q -n $n $h/$p >$proOut"
+Invoke-Expression "$ab -U uas.csv -q -n $n $h/$p >$proOut"
 
 # Check no requests failed in calibration
 $failedCal = Get-Content $calOut | Select-String -Pattern "Failed requests"
@@ -100,14 +100,14 @@ if ($non200Pro -ne 0) {
 # Get the time for calibration
 $calTime = Get-Content $calOut | Select-String -Pattern "Time taken for tests"
 $calTime = $calTime -replace 'Time taken for tests: *([0-9]*\.[0-9]*) seconds','$1'
-$calTimeS = $calTime / $n
-Write-Host "Calibration time: $calTimeS s ($calTimeS s per request)"
+$calTimePR = $calTime / $n
+Write-Host "Calibration time: $calTime s ($calTimePR s per request)"
 
 # Get the time for processing
 $proTime = Get-Content $proOut | Select-String -Pattern "Time taken for tests"
 $proTime = $proTime -replace 'Time taken for tests: *([0-9]*\.[0-9]*) seconds','$1'
-$proTimeS = $proTime / $n
-Write-Host "Processing time: $proTimeS s ($proTimeS s per request)"
+$proTimePR = $proTime / $n
+Write-Host "Processing time: $proTime s ($proTimePR s per request)"
 
 # Calculate the processing overhead
 $diff = $proTime -  $calTime
