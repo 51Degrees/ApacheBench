@@ -88,9 +88,9 @@ fi
 
 # Run the benchmarks
 echo "Running calibration"
-$AB -A uas.csv -q -n $PASSES $HOST/$CAL_END >$CAL_OUT
+$AB -U uas.csv -q -n $PASSES $HOST/$CAL_END >$CAL_OUT
 echo "Running processing"
-$AB -A uas.csv -q -n $PASSES $HOST/$PRO_END >$PRO_OUT
+$AB -U uas.csv -q -n $PASSES $HOST/$PRO_END >$PRO_OUT
 
 # Stop the service
 kill $SERVICE_PID
