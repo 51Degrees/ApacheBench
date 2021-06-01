@@ -65,9 +65,9 @@ While ($HTTP_Status -ne 200 -And $Tries -le 12) {
 
 # Run the benchmarks
 Write-Host "Running calibration"
-Invoke-Expression "$ab -U uas.csv -q -n $n $h/$c >$calOut"
+Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -n $n $h/$c >$calOut"
 Write-Host "Running processing"
-Invoke-Expression "$ab -U uas.csv -q -n $n $h/$p >$proOut"
+Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -n $n $h/$p >$proOut"
 
 # Check no requests failed in calibration
 $failedCal = Get-Content $calOut | Select-String -Pattern "Failed requests"
