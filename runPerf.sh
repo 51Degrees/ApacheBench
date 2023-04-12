@@ -23,8 +23,13 @@ case $key in
     shift # past argument
     shift # past value
     ;;
-	-s|--service-start)
+	  -s|--service-start)
     SERVICE_START="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -t|--service-stop)
+    SERVICE_STOP="$2"
     shift # past argument
     shift # past value
     ;;
@@ -51,7 +56,7 @@ then
     echo "Expected:"
     echo "    -h | --host                   : root host to call e.g. localhost:3000"
     echo "    -n | --passes                 : number of passes i.e. the number of calls to the endpoint"
-	echo "    -s | --service-start          : command to start the web service e.g. \"php -S localhost:3000\""
+	  echo "    -s | --service-start          : command to start the web service e.g. \"php -S localhost:3000\""
     echo "    -c | --calibration-endpoint   : endpoint path to use for calibration on the host e.g. test/calibrate"
     echo "    -p | --process-endpoint       : endpoint path to use for the process pass on the host e.g. test/process"
 	echo ""
@@ -63,6 +68,7 @@ fi
 echo "Host                     = ${HOST}"
 echo "Passes                   = ${PASSES}"
 echo "Service Start            = ${SERVICE_START}"
+echo "Service Stop             = ${SERVICE_STOP}"
 echo "Calibration Endpoint     = ${CAL_END}"
 echo "Process Endpoint         = ${PRO_END}"
 
@@ -95,8 +101,13 @@ echo "Running processing"
 $AB -U $UAS -q -n $PASSES $HOST/$PRO_END >$PRO_OUT
 
 # Stop the service
-kill $SERVICE_PID
-wait $SERVICE_PID 2>&1
+if [ -z "$SERVICE_STOP" ]
+  then
+    kill $SERVICE_PID
+    wait $SERVICE_PID 2>&1
+else
+  $SERVICE_STOP
+fi
 
 # Check no requests failed in calibration
 FAILED_CAL=`cat $CAL_OUT | grep "Failed requests" | sed -En "s/Failed requests: *([0-9]*)/\1/p"`
