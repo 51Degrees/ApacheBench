@@ -46,17 +46,22 @@ For a list of compilers supported by CMake, see [CMake Generators](https://cmake
 
 ## Supplying Request Headers
 
-By default `ab` repeats a single set of HTTP headers for every request. This version can instead vary the headers each request in one of two ways, using files published in the [51Degrees data repository](https://github.com/51degrees/device-detection-data).
+By default `ab` repeats a single set of HTTP headers for every request. This version can instead vary the headers each request, from one of two file formats published in the [51Degrees data repository](https://github.com/51degrees/device-detection-data):
 
-### User-Agents (`-U`)
+- a **CSV** of User-Agents, one per line, supplied with `-U`. Only the `User-Agent` header is varied.
+- a **YAML** file of evidence records, supplied with `-E`. The full set of headers in each record is varied, including the `Sec-CH-UA` client hints.
 
-Provide a text file of User-Agents, one per line. Each request selects a User-Agent at random, modifies up to 10 random characters, and sends it as the `User-Agent` header.
+The two are different files. The CSV varies a single header, whereas the YAML varies a complete set of evidence, so the YAML gives a more representative device detection workload. Only one is used at a time, and `-E` takes precedence when both are given.
+
+### User-Agents CSV (`-U`)
+
+Provide a CSV file of User-Agents, one per line, for example `20000 User Agents.csv`. Each request selects a User-Agent at random, modifies up to 10 random characters, and sends it as the `User-Agent` header.
 
 ```
 ./ab -U "20000 User Agents.csv" -c 10 -n 10000 http://127.0.0.1:8081/
 ```
 
-### Evidence records (`-E`)
+### Evidence records YAML (`-E`)
 
 Provide a YAML evidence file, for example `20000 Evidence Records.yml`. The file is a sequence of records separated by `---`, each a set of `header.<name>: <value>` lines. For every request `ab` selects a record at random and sends all of its headers, so a request carries a full set of evidence including the `Sec-CH-UA` client hints rather than a User-Agent alone. When an evidence file is given it is used instead of the User-Agents file.
 
