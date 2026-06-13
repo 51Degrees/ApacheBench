@@ -1,6 +1,6 @@
 # 51Degrees ApacheBench Fork
 
-![51Degrees](https://51degrees.com/DesktopModules/FiftyOne/Distributor/Logo.ashx?utm_source=github&utm_medium=repository&utm_content=home&utm_campaign=c-open-source "Data rewards the curious") **ApacheBench**
+![51Degrees](https://51degrees.com/img/logo.png?utm_source=github&utm_medium=readme&utm_campaign=apachebench&utm_content=readme.md&utm_term=51degrees-apachebench-fork "Data rewards the curious") **ApacheBench**
 
 
 A version of the Apache Benchmarking tool modified to vary the request headers between requests. For more information on the original project including building this version see the [Apache HTTP server benchmarking tool](http://httpd.apache.org/docs/2.2/programs/ab.html) documentation.
