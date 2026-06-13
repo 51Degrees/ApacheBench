@@ -69,3 +69,6 @@ Scripts are provided for both Powershell and Bash as part of the build. These ar
 ```
 bin\runPerf.ps1 -h http://127.0.0.1:3000 -n 2000 -s "php -S 127.0.0.1:3000 -t C:\inetpub\wwwroot" -c calibrate.php -p process.php 
 ```
+### Concurrency
+
+Both scripts accept an optional concurrency argument, which sets the number of concurrent requests ApacheBench makes (the `-c` option to `ab`). It defaults to 1, a single request at a time, so existing usage is unchanged. Pass `-k` (Bash also accepts `--concurrency`) to raise it, for example `-k 4` to load the service with four concurrent requests.

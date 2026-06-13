@@ -7,6 +7,7 @@ SUMMARY_OUT=summary.json
 AB=`dirname $0`/ab
 UAS=`dirname $0`/uas.csv
 ALLOWED_OVERHEAD_MS=200
+CONCURRENCY=1
 
 while [[ $# -gt 0 ]]
 do
@@ -38,6 +39,11 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    -k|--concurrency)
+    CONCURRENCY="$2"
+    shift # past argument
+    shift # past value
+    ;;
     *)    # unknown option
     shift # past argument
     ;;
@@ -54,6 +60,7 @@ then
 	echo "    -s | --service-start          : command to start the web service e.g. \"php -S localhost:3000\""
     echo "    -c | --calibration-endpoint   : endpoint path to use for calibration on the host e.g. test/calibrate"
     echo "    -p | --process-endpoint       : endpoint path to use for the process pass on the host e.g. test/process"
+    echo "    -k | --concurrency            : number of concurrent requests to make (default 1)"
 	echo ""
 	echo "For example:"
 	echo "    runPerf.bat -host localhost:3000 -passes 1000 -service-start \"php -S localhost:3000\" ..."
@@ -65,6 +72,7 @@ echo "Passes                   = ${PASSES}"
 echo "Service Start            = ${SERVICE_START}"
 echo "Calibration Endpoint     = ${CAL_END}"
 echo "Process Endpoint         = ${PRO_END}"
+echo "Concurrency              = ${CONCURRENCY}"
 
 # Function for arithmetic
 calc() { awk "BEGIN{print $*}"; }
@@ -90,9 +98,9 @@ fi
 
 # Run the benchmarks
 echo "Running calibration"
-$AB -U $UAS -q -n $PASSES $HOST/$CAL_END >$CAL_OUT
+$AB -U $UAS -q -c $CONCURRENCY -n $PASSES $HOST/$CAL_END >$CAL_OUT
 echo "Running processing"
-$AB -U $UAS -q -n $PASSES $HOST/$PRO_END >$PRO_OUT
+$AB -U $UAS -q -c $CONCURRENCY -n $PASSES $HOST/$PRO_END >$PRO_OUT
 
 # Stop the service
 kill $SERVICE_PID
