@@ -8,6 +8,7 @@ AB=`dirname $0`/ab
 UAS=`dirname $0`/uas.csv
 ALLOWED_OVERHEAD_MS=200
 CONCURRENCY=1
+EVIDENCE=
 
 while [[ $# -gt 0 ]]
 do
@@ -44,6 +45,11 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    -E|--evidence)
+    EVIDENCE="$2"
+    shift # past argument
+    shift # past value
+    ;;
     *)    # unknown option
     shift # past argument
     ;;
@@ -61,6 +67,7 @@ then
     echo "    -c | --calibration-endpoint   : endpoint path to use for calibration on the host e.g. test/calibrate"
     echo "    -p | --process-endpoint       : endpoint path to use for the process pass on the host e.g. test/process"
     echo "    -k | --concurrency            : number of concurrent requests to make (default 1)"
+    echo "    -E | --evidence               : YAML evidence file to send as request headers, used instead of the default User-Agents file"
 	echo ""
 	echo "For example:"
 	echo "    runPerf.bat -host localhost:3000 -passes 1000 -service-start \"php -S localhost:3000\" ..."
@@ -73,6 +80,16 @@ echo "Service Start            = ${SERVICE_START}"
 echo "Calibration Endpoint     = ${CAL_END}"
 echo "Process Endpoint         = ${PRO_END}"
 echo "Concurrency              = ${CONCURRENCY}"
+
+# Send a full set of headers from each record of the evidence file when one
+# is given, otherwise rotate the User-Agents file as before.
+if [[ -n ${EVIDENCE} ]]
+then
+    SOURCE_ARG="-E ${EVIDENCE}"
+    echo "Evidence                 = ${EVIDENCE}"
+else
+    SOURCE_ARG="-U ${UAS}"
+fi
 
 # Function for arithmetic
 calc() { awk "BEGIN{print $*}"; }
@@ -98,9 +115,9 @@ fi
 
 # Run the benchmarks
 echo "Running calibration"
-$AB -U $UAS -q -c $CONCURRENCY -n $PASSES $HOST/$CAL_END >$CAL_OUT
+$AB $SOURCE_ARG -q -c $CONCURRENCY -n $PASSES $HOST/$CAL_END >$CAL_OUT
 echo "Running processing"
-$AB -U $UAS -q -c $CONCURRENCY -n $PASSES $HOST/$PRO_END >$PRO_OUT
+$AB $SOURCE_ARG -q -c $CONCURRENCY -n $PASSES $HOST/$PRO_END >$PRO_OUT
 
 # Stop the service
 kill $SERVICE_PID

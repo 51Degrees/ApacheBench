@@ -1,4 +1,4 @@
-﻿param ($h, $s, $c, $p, $n, $conf, $k=1)
+﻿param ($h, $s, $c, $p, $n, $conf, $k=1, $E)
 
 $scriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 
@@ -42,6 +42,15 @@ Write-Host "Calibration Endpoint     = $c"
 Write-Host "Process Endpoint         = $p"
 Write-Host "Concurrency              = $k"
 
+# Send a full set of headers from each record of the evidence file when one
+# is given, otherwise rotate the User-Agents file as before.
+if ($E -ne $null) {
+    $sourceArg = "-E $E"
+    Write-Host "Evidence                 = $E"
+} else {
+    $sourceArg = "-U $ScriptRoot/uas.csv"
+}
+
 Write-Host "Starting the service"
 $serviceProcess = Start-Process pwsh -argument "-command `"$s`"" -RedirectStandardError "$scriptRoot/service-$conf.error.out" -RedirectStandardOutput "$scriptRoot/service-$conf.out" –PassThru -NoNewWindow
 
@@ -68,9 +77,9 @@ While ($HTTP_Status -ne 200 -And $Tries -le 12) {
 
 # Run the benchmarks
 Write-Host "Running calibration"
-Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -c $k -n $n $h/$c >$calOut"
+Invoke-Expression "$ab $sourceArg -q -c $k -n $n $h/$c >$calOut"
 Write-Host "Running processing"
-Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -c $k -n $n $h/$p >$proOut"
+Invoke-Expression "$ab $sourceArg -q -c $k -n $n $h/$p >$proOut"
 
 # Check no requests failed in calibration
 $failedCal = Get-Content $calOut | Select-String -Pattern "Failed requests"
