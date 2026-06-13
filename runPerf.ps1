@@ -1,4 +1,4 @@
-﻿param ($h, $s, $c, $p, $n, $conf)
+﻿param ($h, $s, $c, $p, $n, $conf, $k=1)
 
 $scriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 
@@ -28,6 +28,7 @@ if ($h -eq $null -or
 	Write-Host "    -s : command to start the web service e.g. `"php -S localhost:3000`""
     Write-Host "    -c : endpoint path to use for calibration on the host e.g. test/calibrate"
     Write-Host "    -p : endpoint path to use for the process pass on the host e.g. test/process"
+    Write-Host "    -k : number of concurrent requests to make (default 1)"
 	Write-Host ""
 	Write-Host "For example:"
 	Write-Host "    runPerf.ps1 -host localhost:3000 -passes 1000 -service-start `"php -S localhost:3000`" ..."
@@ -39,6 +40,7 @@ Write-Host "Passes                   = $n"
 Write-Host "Service Start            = $s"
 Write-Host "Calibration Endpoint     = $c"
 Write-Host "Process Endpoint         = $p"
+Write-Host "Concurrency              = $k"
 
 Write-Host "Starting the service"
 $serviceProcess = Start-Process pwsh -argument "-command `"$s`"" -RedirectStandardError "$scriptRoot/service-$conf.error.out" -RedirectStandardOutput "$scriptRoot/service-$conf.out" –PassThru -NoNewWindow
@@ -66,9 +68,9 @@ While ($HTTP_Status -ne 200 -And $Tries -le 12) {
 
 # Run the benchmarks
 Write-Host "Running calibration"
-Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -n $n $h/$c >$calOut"
+Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -c $k -n $n $h/$c >$calOut"
 Write-Host "Running processing"
-Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -n $n $h/$p >$proOut"
+Invoke-Expression "$ab -U $ScriptRoot/uas.csv -q -c $k -n $n $h/$p >$proOut"
 
 # Check no requests failed in calibration
 $failedCal = Get-Content $calOut | Select-String -Pattern "Failed requests"
