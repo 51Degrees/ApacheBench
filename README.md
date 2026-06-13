@@ -72,3 +72,13 @@ bin\runPerf.ps1 -h http://127.0.0.1:3000 -n 2000 -s "php -S 127.0.0.1:3000 -t C:
 ### Concurrency
 
 Both scripts accept an optional concurrency argument, which sets the number of concurrent requests ApacheBench makes (the `-c` option to `ab`). It defaults to 1, a single request at a time, so existing usage is unchanged. Pass `-k` (Bash also accepts `--concurrency`) to raise it, for example `-k 4` to load the service with four concurrent requests.
+
+## Evidence Records
+
+By default each request carries a single random User-Agent (the `-U` option, see above). Device detection can also use other request headers, such as the `Sec-CH-UA` client hint headers, so a more representative benchmark sends a full set of headers per request.
+
+Pass `-E` (Bash `runPerf.sh` also accepts `--evidence`) with a YAML evidence file, as published in the [51Degrees data repository](https://github.com/51Degrees/device-detection-data) (for example `20000 Evidence Records.yml`). The file is a sequence of records separated by `---`, each a set of `header.<name>: <value>` lines. For every request `ab` picks a record at random and sends all of its headers. When an evidence file is given it is used instead of the User-Agents file.
+
+```
+./ab -E "20000 Evidence Records.yml" -c 10 -n 10000 http://127.0.0.1:8081/
+```

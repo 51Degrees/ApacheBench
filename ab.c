@@ -326,6 +326,15 @@ char userAgents[USERAGENT_COUNT][USERAGENT_MAX_LENGTH];
 int userAgentsCount = 0;
 int userAgentRandomCharacters = 0;
 
+/* array of evidence records. Each entry is a ready to send block of HTTP
+ * header lines (Name: Value\r\n), built from one record of a YAML evidence
+ * file so that a request can carry a full set of headers rather than a
+ * single User-Agent. */
+#define EVIDENCE_COUNT 20000
+#define EVIDENCE_MAX_LENGTH 2048
+char evidenceRecords[EVIDENCE_COUNT][EVIDENCE_MAX_LENGTH];
+int evidenceRecordsCount = 0;
+
 /* overrides for ab-generated common headers */
 int opt_host = 0;       /* was an optional "Host:" header specified? */
 int opt_useragent = 0;  /* was an optional "User-Agent:" header specified? */
@@ -691,8 +700,38 @@ static void write_request(struct connection * c)
         "X-OperaMini-Phone-UA" };
     apr_size_t uniqueRequestLength;
 
+    /* When an evidence file is loaded, replace the default User-Agent line
+     * with the full block of headers from a randomly chosen evidence
+     * record, so that each request carries a complete, realistic set of
+     * evidence rather than a single User-Agent. */
+    if (evidenceRecordsCount != 0) {
+        const char *record = evidenceRecords[rand() % evidenceRecordsCount];
+        src = request;
+        dst = uniqueRequest;
+        while (*src != 0) {
+            if (strncmp(src, USER_AGENT_HEADER, sizeof(USER_AGENT_HEADER) - 1) == 0) {
+                dst += snprintf(dst,
+                    uniqueRequest + sizeof(uniqueRequest) - dst,
+                    "%s",
+                    record);
+                /* Skip the template's User-Agent line. */
+                while (*src != '\n' && *src != 0) {
+                    src++;
+                }
+                if (*src == '\n') {
+                    src++;
+                }
+            } else {
+                *dst = *src;
+                dst++;
+                src++;
+            }
+        }
+        *dst = 0;
+        uniqueRequestLength = dst - uniqueRequest;
+    }
     /* modify request each time to append data from request file */
-    if (userAgentsCount != 0) {
+    else if (userAgentsCount != 0) {
         src = request;
         dst = uniqueRequest;
         while (*src != 0) {
@@ -1670,6 +1709,81 @@ void initUserAgents(const char *userAgentFilePath) {
     fclose(userAgentsFile);
 }
 
+/*
+ * Load a YAML evidence file, as produced by the 51Degrees data
+ * repository (for example "20000 Evidence Records.yml"). The format is a
+ * sequence of records separated by a "---" line, each record being one or
+ * more "header.<name>: <value>" lines. Values that contain reserved YAML
+ * characters are wrapped in single quotes which are stripped here. Each
+ * record is stored as a block of "<name>: <value>\r\n" header lines ready
+ * to be written straight into a request.
+ */
+void initEvidence(const char *evidenceFilePath) {
+    FILE *evidenceFile = fopen(evidenceFilePath, "r");
+    char line[EVIDENCE_MAX_LENGTH];
+    int inRecord = 0;
+    if (evidenceFile == NULL) {
+        fprintf(stderr, "Could not open evidence file '%s'\n", evidenceFilePath);
+        return;
+    }
+    evidenceRecords[0][0] = 0;
+    while (fgets(line, sizeof(line), evidenceFile) != NULL) {
+        size_t len = strlen(line);
+        char *name, *colon, *value;
+        size_t valueLength, used;
+
+        /* Strip the trailing line ending. */
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+            line[--len] = 0;
+        }
+
+        /* A "---" line marks the boundary between records. */
+        if (strcmp(line, "---") == 0) {
+            if (inRecord && evidenceRecords[evidenceRecordsCount][0] != 0) {
+                evidenceRecordsCount++;
+                if (evidenceRecordsCount >= EVIDENCE_COUNT) {
+                    break;
+                }
+                evidenceRecords[evidenceRecordsCount][0] = 0;
+            }
+            inRecord = 1;
+            continue;
+        }
+
+        /* Only "header.<name>: <value>" lines are used. */
+        if (!inRecord || strncmp(line, "header.", 7) != 0) {
+            continue;
+        }
+        name = line + 7;
+        colon = strstr(name, ": ");
+        if (colon == NULL) {
+            continue;
+        }
+        *colon = 0;
+        value = colon + 2;
+
+        /* Remove the single quotes YAML uses to escape some values. */
+        valueLength = strlen(value);
+        if (valueLength >= 2 && value[0] == '\'' && value[valueLength - 1] == '\'') {
+            value[valueLength - 1] = 0;
+            value++;
+        }
+
+        used = strlen(evidenceRecords[evidenceRecordsCount]);
+        snprintf(evidenceRecords[evidenceRecordsCount] + used,
+            EVIDENCE_MAX_LENGTH - used, "%s: %s\r\n", name, value);
+    }
+
+    /* Commit the final record. */
+    if (inRecord && evidenceRecordsCount < EVIDENCE_COUNT
+        && evidenceRecords[evidenceRecordsCount][0] != 0) {
+        evidenceRecordsCount++;
+    }
+
+    fclose(evidenceFile);
+    fprintf(stderr, "Loaded %d evidence records.\n", evidenceRecordsCount);
+}
+
 /* --------------------------------------------------------- */
 
 /* run the tests */
@@ -1978,6 +2092,8 @@ static void usage(const char *progname)
     fprintf(stderr, "    -H attribute    Add Arbitrary header line, eg. 'Accept-Encoding: gzip'\n");
     fprintf(stderr, "                    Inserted after all normal header lines. (repeatable)\n");
     fprintf(stderr, "    -U filename     File of User-Agents to use randomly for each request\n");
+    fprintf(stderr, "    -E filename     YAML evidence file whose records are sent as the\n");
+    fprintf(stderr, "                    request headers, one record chosen at random per request\n");
     fprintf(stderr, "    -R characters   Number of characters in User-Agents to change randomly\n");
     fprintf(stderr, "    -A attribute    Add Basic WWW Authentication, the attributes\n");
     fprintf(stderr, "                    are a colon separated username and password.\n");
@@ -2160,7 +2276,7 @@ int main(int argc, const char * const argv[])
 #endif
 
     apr_getopt_init(&opt, cntxt, argc, argv);
-    while ((status = apr_getopt(opt, "R:U:n:c:t:b:T:p:v:rkVhwix:y:z:C:H:P:A:g:X:de:Sq"
+    while ((status = apr_getopt(opt, "R:U:E:n:c:t:b:T:p:v:rkVhwix:y:z:C:H:P:A:g:X:de:Sq"
 #ifdef USE_SSL
             "Z:f:"
 #endif
@@ -2320,6 +2436,9 @@ int main(int argc, const char * const argv[])
                 break;
             case 'U':
                 initUserAgents(optarg);
+                break;
+            case 'E':
+                initEvidence(optarg);
                 break;
 #ifdef USE_SSL
             case 'Z':
